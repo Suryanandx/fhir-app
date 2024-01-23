@@ -2,8 +2,6 @@ import React, { useEffect, useState } from 'react';
 import Form from '@rjsf/mui';
 import { Button } from '@mui/material';
 
-import { IErrorObject, RJSFSchema, ValidatorType } from '@rjsf/core';
-
 interface FhirQuestionnaireProps {
   fhirData: FHIRQuestionnaire;
 }
@@ -30,31 +28,6 @@ interface AnswerOption {
   };
 }
 
-interface MyFormData {
-  [key: string]: any;
-}
-
-const customValidator: ValidatorType<MyFormData, RJSFSchema, any> = (
-  formData: any,
-  schema: any
-) => {
-  let errors: IErrorObject[] = [];
-
-  // Example validation: Check if a required field is empty
-  schema.required?.forEach((requiredField: string) => {
-    if (!formData[requiredField]) {
-      errors.push({
-        message: `Field ${requiredField} is required`,
-        property: `instance.${requiredField}`,
-        stack: `instance.${requiredField} is required`,
-      });
-    }
-  });
-
-  // Additional validation logic goes here
-
-  return { errors };
-};
 
 const FhirQuestionnaireToRjsf: React.FC<FhirQuestionnaireProps> = ({
   fhirData,
@@ -168,7 +141,7 @@ const FhirQuestionnaireToRjsf: React.FC<FhirQuestionnaireProps> = ({
         formData={formData}
         onChange={({ formData }) => setFormData(formData)}
         onSubmit={handleSubmit}
-        validator={customValidator}
+        validator={() => {}}
       >
         <Button>Submit</Button>
       </Form>
