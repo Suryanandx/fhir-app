@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import Form from '@rjsf/mui';
 import { Button } from '@mui/material';
 
+import { IErrorObject, RJSFSchema, ValidatorType } from '@rjsf/core';
+
 interface FhirQuestionnaireProps {
   fhirData: FHIRQuestionnaire;
 }
@@ -27,6 +29,32 @@ interface AnswerOption {
     display: string;
   };
 }
+
+interface MyFormData {
+  [key: string]: any;
+}
+
+const customValidator: ValidatorType<MyFormData, RJSFSchema, any> = (
+  formData: any,
+  schema: any
+) => {
+  let errors: IErrorObject[] = [];
+
+  // Example validation: Check if a required field is empty
+  schema.required?.forEach((requiredField: string) => {
+    if (!formData[requiredField]) {
+      errors.push({
+        message: `Field ${requiredField} is required`,
+        property: `instance.${requiredField}`,
+        stack: `instance.${requiredField} is required`,
+      });
+    }
+  });
+
+  // Additional validation logic goes here
+
+  return { errors };
+};
 
 const FhirQuestionnaireToRjsf: React.FC<FhirQuestionnaireProps> = ({
   fhirData,
@@ -74,8 +102,11 @@ const FhirQuestionnaireToRjsf: React.FC<FhirQuestionnaireProps> = ({
           schemaItem.type = 'array';
           schemaItem.items = {
             type: 'string',
-            enum: item.answerOption?.map((option) => option.valueCoding.code) || [],
-            enumNames: item.answerOption?.map((option) => option.valueCoding.display) || [],
+            enum:
+              item.answerOption?.map((option) => option.valueCoding.code) || [],
+            enumNames:
+              item.answerOption?.map((option) => option.valueCoding.display) ||
+              [],
           };
           schemaItem.uniqueItems = true; // Ensure unique items in the array
           schemaItem.default = []; // Default value for multi-select
@@ -87,14 +118,17 @@ const FhirQuestionnaireToRjsf: React.FC<FhirQuestionnaireProps> = ({
         } else {
           // For single-select, use radio buttons
           schemaItem.type = 'string';
-          schemaItem.enum = item.answerOption?.map((option) => option.valueCoding.code);
-          schemaItem.enumNames = item.answerOption?.map((option) => option.valueCoding.display) || [];
+          schemaItem.enum = item.answerOption?.map(
+            (option) => option.valueCoding.code
+          );
+          schemaItem.enumNames =
+            item.answerOption?.map((option) => option.valueCoding.display) ||
+            [];
           uiSchema[`${item.linkId}`] = {
             'ui:widget': 'radio',
           };
         }
       } else if (item.type === 'display') {
-       
         schemaItem.type = 'string';
         schemaItem.readOnly = true; // or use a custom widget that renders text
       } else if (item.type === 'group') {
@@ -134,7 +168,7 @@ const FhirQuestionnaireToRjsf: React.FC<FhirQuestionnaireProps> = ({
         formData={formData}
         onChange={({ formData }) => setFormData(formData)}
         onSubmit={handleSubmit}
-        validator={() => {}}
+        validator={customValidator}
       >
         <Button>Submit</Button>
       </Form>
