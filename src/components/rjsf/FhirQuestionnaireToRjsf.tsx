@@ -28,7 +28,6 @@ interface AnswerOption {
   };
 }
 
-
 const FhirQuestionnaireToRjsf: React.FC<FhirQuestionnaireProps> = ({
   fhirData,
 }) => {
@@ -61,67 +60,71 @@ const FhirQuestionnaireToRjsf: React.FC<FhirQuestionnaireProps> = ({
     const convertItemToSchema = (item: FHIRQuestionItem) => {
       const schemaItem: any = { title: item.text };
 
-      if (item.type === 'boolean') {
-        schemaItem.type = 'boolean';
-      } else if (item.type === 'decimal' || item.type === 'integer') {
-        schemaItem.type = 'number';
-      } else if (item.type === 'string') {
-        schemaItem.type = 'string';
-      } else if (item.type === 'date' || item.type === 'dateTime') {
-        schemaItem.type = 'string'; // Use 'string' for dates; you can add format constraints
-      } else if (item.type === 'choice') {
-        if (item.repeats) {
-          // For multi-select, use checkboxes
-          schemaItem.type = 'array';
-          schemaItem.items = {
-            type: 'string',
-            enum:
-              item.answerOption?.map((option) => option.valueCoding.code) || [],
-            enumNames:
-              item.answerOption?.map((option) => option.valueCoding.display) ||
-              [],
-          };
-          schemaItem.uniqueItems = true; // Ensure unique items in the array
-          schemaItem.default = []; // Default value for multi-select
-
-          // Modify UI schema to use checkboxes
-          uiSchema[`${item.linkId}`] = {
-            'ui:widget': 'radio',
-          };
-        } else {
-          // For single-select, use radio buttons
+      switch (item.type) {
+        case 'boolean':
+          schemaItem.type = 'boolean';
+          break;
+        case 'decimal':
+        case 'integer':
+          schemaItem.type = 'number';
+          break;
+        case 'string':
           schemaItem.type = 'string';
-          schemaItem.enum = item.answerOption?.map(
-            (option) => option.valueCoding.code
-          );
-          schemaItem.enumNames =
-            item.answerOption?.map((option) => option.valueCoding.display) ||
+          break;
+        case 'date':
+        case 'dateTime':
+          schemaItem.type = 'string'; // Use 'string' for dates; you can add format constraints
+          break;
+        case 'choice':
+          const options =
+            (item.answerOption || []).map((opt) => opt.valueCoding.code) || [];
+          const optionNames =
+            (item.answerOption || []).map((opt) => opt.valueCoding.display) ||
             [];
-          uiSchema[`${item.linkId}`] = {
-            'ui:widget': 'radio',
-          };
-        }
-      } else if (item.type === 'display') {
-        schemaItem.type = 'string';
-        schemaItem.readOnly = true; // or use a custom widget that renders text
-      } else if (item.type === 'group') {
-        schemaItem.type = 'object';
-        schemaItem.properties = {};
-        schemaItem.required = [];
 
-        item.item?.forEach((nestedItem) => {
-          const nestedSchemaItem = convertItemToSchema(nestedItem);
-          schemaItem.properties[nestedItem.linkId] = nestedSchemaItem;
-          if (nestedItem.required) {
-            schemaItem.required.push(nestedItem.linkId);
+          if (item.repeats) {
+            // Multi-select (checkboxes)
+            schemaItem.type = 'array';
+            schemaItem.items = {
+              type: 'string',
+              enum: options,
+              enumNames: optionNames,
+            };
+            schemaItem.uniqueItems = true;
+            uiSchema[item.linkId] = { 'ui:widget': 'checkboxes' };
+          } else {
+            // Single select (radio buttons)
+            schemaItem.type = 'string';
+            schemaItem.enum = options;
+            schemaItem.enumNames = optionNames;
+            uiSchema[item.linkId] = { 'ui:widget': 'radio' };
           }
-        });
+          break;
+        case 'display':
+          schemaItem.type = 'string';
+          schemaItem.readOnly = true; // or use a custom widget that renders text
+          break;
+        case 'group':
+          schemaItem.type = 'object';
+          schemaItem.properties = {};
+          schemaItem.required = [];
+
+          (item.item || []).forEach((nestedItem) => {
+            const nestedSchemaItem = convertItemToSchema(nestedItem);
+            schemaItem.properties[nestedItem.linkId] = nestedSchemaItem;
+            if (nestedItem.required) {
+              schemaItem.required.push(nestedItem.linkId);
+            }
+          });
+          break;
+        default:
+          break;
       }
 
       return schemaItem;
     };
 
-    fhirQuestionnaire.item?.forEach((item) => {
+    (fhirQuestionnaire.item || []).forEach((item) => {
       const schemaItem = convertItemToSchema(item);
       schema.properties[item.linkId] = schemaItem;
       if (item.required) {
